@@ -9,7 +9,7 @@ This package was built using Python 3.7 and OpenCV on Ubuntu 20.04. Follow the i
 
 Download the package:
 ```
-git clone git@github.com:latent-pixel/Pb-lite-Boundary-Detection.git
+git clone git@github.com:latent-pixel/Boundary-Detection.git
 ```
 Then, run the package using the following commands:
 ```
