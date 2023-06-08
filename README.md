@@ -13,7 +13,7 @@ git clone git@github.com:latent-pixel/Boundary-Detection.git
 ```
 Then, run the package using the following commands:
 ```
-cd Pb-lite-Boundary-Detection
+cd Boundary-Detection
 python3 phase1/code/Wrapper.py
 ```
 The results can then be found in a separate `results` folder in the package.
