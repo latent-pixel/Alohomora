@@ -117,7 +117,7 @@ def main():
                 rotated_filter = ndimage.rotate(dog_kernel, orientations[o], reshape=False)
                 dog_filters.append(rotated_filter)
                 axs[s, o].imshow(rotated_filter, interpolation='none', cmap='gray')
-        fig.savefig('results/dog_fltrs.png')
+        fig.savefig('phase1/results/dog_fltrs.png')
         plt.close(fig)
         return np.array(dog_filters)
 
@@ -161,7 +161,7 @@ def main():
             if o < 4:
                 axs[no_scales - 1, o + 8].imshow(gaussian_filters[o], interpolation='none', cmap='gray')
 
-        fig.savefig('results/lm_fltrs.png')
+        fig.savefig('phase1/results/lm_fltrs.png')
         plt.close(fig)
         lm_filters = dog_filters + ddog_filters + log_filters + gaussian_filters
         return lm_filters
@@ -180,7 +180,7 @@ def main():
                 rotated_filter = ndimage.rotate(gauss_kernel, orientations[o], reshape=False)
                 gabor_kernels.append(rotated_filter)
                 axs[s, o].imshow(rotated_filter, interpolation='none', cmap='gray')
-        fig.savefig('results/gabor_fltrs.png')
+        fig.savefig('phase1/results/gabor_fltrs.png')
         plt.close(fig)
         return gabor_kernels
 
@@ -223,7 +223,7 @@ def main():
                 rotated_disk = ndimage.rotate(hdisk, orientations[o], reshape=False)
                 half_disks.append(rotated_disk)
                 axs[s, o].imshow(rotated_disk, interpolation='none', cmap='gray')
-        fig.savefig('results/half_disks.png')
+        fig.savefig('phase1/results/half_disks.png')
         plt.close(fig)
         return half_disks
 
@@ -251,8 +251,8 @@ def main():
     # Executing our program to get the pb-lite output
     def get_pb_lite_image(src_image, canny_image, sobel_image, img_number):
         
-        if not os.path.exists("results/"+img_number):
-            os.mkdir("results/"+img_number)
+        if not os.path.exists("phase1/results/"+img_number):
+            os.mkdir("phase1/results/"+img_number)
         img = src_image
 
         # Generating our filter bank
@@ -281,7 +281,7 @@ def main():
         k_means.fit(reshaped_image)
         texture_labels = k_means.predict(reshaped_image)
         texture_map = np.reshape(texture_labels, (img.shape[0], img.shape[1]))
-        plt.imsave("results/" + img_number + "/image" + img_number + "_texton.png", texture_map)
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_texton.png", texture_map)
 
         # Brightness map, B
         print("Onto the brightness map...")
@@ -291,7 +291,7 @@ def main():
         k_means.fit(rshaped_image_b)
         brightness_labels = k_means.predict(rshaped_image_b)
         b_map = brightness_labels.reshape(int(grayscale_image.shape[0]), int(grayscale_image.shape[1]))
-        plt.imsave("results/" + img_number + "/image" + img_number + "_brightness.png", b_map, cmap='gray')
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_brightness.png", b_map, cmap='gray')
 
         # Colour map, C
         print("Now, onto the colour map...")
@@ -300,7 +300,7 @@ def main():
         k_means.fit(two_channel_image)
         colour_labels = k_means.predict(two_channel_image)
         c_map = np.reshape(colour_labels, (img.shape[0], img.shape[1]))
-        plt.imsave("results/" + img_number + "/image" + img_number + "_color.png", c_map)
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_color.png", c_map)
 
         fltr_size = [11, 19, 27]
         disk_orientations = [-90 + 180, -90, -60 + 180, -60, -30 + 180, -30, -15 + 180, -15, 0 + 180, 0, 15 + 180, 15,
@@ -314,14 +314,14 @@ def main():
         print("We are now done with the brighness map, now onto the colour map!")
         colour_gradient = get_map_gradient(c_map, list(set(colour_labels)), my_half_disks)
 
-        plt.imsave("results/" + img_number + "/image" + img_number + "_texton_grad.png", texton_gradient)
-        plt.imsave("results/" + img_number + "/image" + img_number + "_brightness_grad.png", brightness_gradient)
-        plt.imsave("results/" + img_number + "/image" + img_number + "_color_grad.png", colour_gradient)
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_texton_grad.png", texton_gradient)
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_brightness_grad.png", brightness_gradient)
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_color_grad.png", colour_gradient)
 
         canny_sobel_product = (1 / 2) * (canny_image) + (1 / 2) * (sobel_image)
         pb_lite_output = np.multiply(((1 / 3) * (texton_gradient + brightness_gradient + colour_gradient)),
                                      canny_sobel_product)
-        plt.imsave("results/" + img_number + "/image" + img_number + "_pb_lite.png", pb_lite_output, cmap="gray")
+        plt.imsave("phase1/results/" + img_number + "/image" + img_number + "_pb_lite.png", pb_lite_output, cmap="gray")
         print("Done with image " + img_number + "!")
         return pb_lite_output
 

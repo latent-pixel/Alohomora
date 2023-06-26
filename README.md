@@ -23,21 +23,21 @@ Filter bank is a collection of different filters: Oriented Difference of Gaussia
 
 DOG Filters             |  Leung-Malik Filters             |  Gabor Filters
 :-------------------------:|:-------------------------:|:-------------------------:
-![](results/dog_fltrs.png)  |  ![](results/lm_fltrs.png)  |  ![](results/gabor_fltrs.png)
+![](phase1/results/dog_fltrs.png)  |  ![](phase1/results/lm_fltrs.png)  |  ![](phase1/results/gabor_fltrs.png)
 
 ### Sample Output
 Texture Map             |  Brightness Map             |  Color Map
 :-------------------------:|:-------------------------:|:-------------------------:
-![](results/1/image1_texton.png)  |  ![](results/1/image1_brightness.png)  |  ![](results/1/image1_color.png)
+![](phase1/results/1/image1_texton.png)  |  ![](phase1/results/1/image1_brightness.png)  |  ![](phase1/results/1/image1_color.png)
 
 Texture Gradients              |  Brightness Gradients             |  Color Gradients
 :-------------------------:|:-------------------------:|:-------------------------:
-![](results/1/image1_texton_grad.png)  |  ![](results/1/image1_brightness_grad.png)  |  ![](results/1/image1_color_grad.png)
+![](phase1/results/1/image1_texton_grad.png)  |  ![](phase1/results/1/image1_brightness_grad.png)  |  ![](phase1/results/1/image1_color_grad.png)
 
 Ouput of the `Pb-lite algorithm` compared with `Canny` and `Sobel` baselines:
 Canny Baseline              |  Sobel Baseline             |  Pb-lite Ouput
 :-------------------------:|:-------------------------:|:-------------------------:
-![](phase1/BSDS500/CannyBaseline/1.png)  |  ![](phase1/BSDS500/SobelBaseline/1.png)  |  ![](results/1/image1_pb_lite.png)
+![](phase1/BSDS500/CannyBaseline/1.png)  |  ![](phase1/BSDS500/SobelBaseline/1.png)  |  ![](phase1/results/1/image1_pb_lite.png)
 
 <br>
 
@@ -56,20 +56,19 @@ python phase2/code/test.py --DataPath --ModelPath
 Use `--help` argument for further explanation on the arguments.
 
 ### Model Architectures
-To start out, we build a basic CNN inspired from **LeNet-5** by *Yann LeCun*. We then move on to seminal works in the field, such as **ResNet**, **ResNeXt** and **DenseNet**. Model architectures are shown below.
+To start out, we build a basic CNN inspired from **LeNet-5** by *Yann LeCun*. We then move on to the more recent seminal works in the field, such as **ResNet**, **ResNeXt** and **DenseNet**. Model architectures are shown below.
 
 ---------------Image(s) here----------------------
 
 ### Results
-The plots below contain information from 2 different runs, both use SGD as optmizer with different learning rates.
+Following are the **LeNet-5** results:
 
-
+Train-Test Accuracies |                  
+:-------------------------:|
 ![](phase2/results/acc_sgd1e-2.png)
-*Train|Test Accuracies. Orange line - SGD with 0.1 learning rate, Blue line - SGD with 0.01 learning rate. Both runs were stopped when their validation loss started to rise.*
+*Orange curve - SGD with 0.1 learning rate, Blue curve - SGD with 0.01 learning rate.*
 
-![](phase2/results/loss_sgd1e-2.png)
-*Validation Loss. Orange line - SGD with 0.1 learning rate, Blue line - SGD with 0.01 learning rate. Both runs were stopped when their validation loss started to rise beyond a level.*
-
-The results on the test set are shown in the graphic below.
-![](phase2/results/test_results_SGD1e-2.png)
-*Confusion matrix - $M_{ij}$ denotes the number of samples at $i^{th}$ row - Ground truth values and $j^{th}$ column - predicted values. Model trained for 25 epochs, SGD with 0.01 learning rate.*
+Validation Loss             |  Test set results
+:-------------------------:|:-------------------------:|
+![](phase2/results/loss_sgd1e-2.png) | ![](phase2/results/test_results_SGD1e-2.png)
+*Orange curve - SGD with 0.1 learning rate, Blue curve - SGD with 0.01 learning rate. Both runs were stopped when their validation loss started to rise.*| *Confusion matrix - $M_{ij}$ denotes the number of samples at $i^{th}$ row - Ground truth values and $j^{th}$ column - predicted values. Model trained for 25 epochs, SGD with 0.01 learning rate.*
