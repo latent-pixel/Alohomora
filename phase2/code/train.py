@@ -1,7 +1,7 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
-from torch.optim import AdamW, SGD
+from torch.optim import AdamW, SGD, lr_scheduler
 import sys
 import random
 from PIL import Image
@@ -9,7 +9,7 @@ import argparse
 import random
 from tqdm import tqdm
 
-from network.Network import CIFAR10Model
+from network.Network import CIFAR10Model, ResNet
 from misc.MiscUtils import *
 from misc.DataUtils import *
 
@@ -31,6 +31,10 @@ def GenerateBatch(DataPath, DirNamesTrain, TrainLabels, ImageSize, MiniBatchSize
     
         # Standardization/Data augmentation!
         transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(p=0.5),
+            # transforms.RandomRotation(degrees=15),
+            # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
@@ -61,17 +65,27 @@ def PrettyPrint(NumEpochs, DivTrain, MiniBatchSize, NumTrainSamples, LatestFile)
         print('Loading latest checkpoint with the name ' + LatestFile)              
     
 
-def TrainOperation(DataPath, DirNames, Labels, 
+def TrainOperation(ModelArch, DataPath, DirNames, Labels, 
                    ImageSize, NumEpochs, MiniBatchSize, DivTrain, 
                    LatestFile, LogsPath, SaveCheckPoint, CheckPointPath):
     # Initialize the model
-    model = CIFAR10Model().to(device)
+    model = ResNet().to(device)
+    if ModelArch == 'LeNet':
+        model = CIFAR10Model().to(device)
+    elif ModelArch == 'ResNet':
+        model = ResNet().to(device)
+    elif ModelArch == 'ResNeXt':
+        model = ResNet().to(device)
+    elif ModelArch == 'DenseNet':
+        model = ResNet().to(device)
 
     # Splitting training data into training and validation datasets 
     TrainDirNames, ValDirNames, TrainLabels, ValLabels = TrainValSplit(DirNames, Labels)
     NumTrainSamples = len(TrainDirNames)
 
-    Optimizer = SGD(model.parameters(), lr=1e-2)
+    StepSize = 5
+    Optimizer = SGD(model.parameters(), lr=1e-1, momentum=0.9)
+    Scheduler = lr_scheduler.StepLR(Optimizer, step_size=StepSize, gamma=0.2)
 
     # Tensorboard
     # Create a summary to monitor loss tensor
@@ -90,6 +104,13 @@ def TrainOperation(DataPath, DirNames, Labels,
     start_timer = tic()
     for Epoch in range(StartEpoch, NumEpochs):
         print("Epoch [{}]".format(Epoch+1))
+
+        # First step: increase batch size by a factor of 5
+        if Epoch == 0:
+            MiniBatchSize *= 5
+        # Decay learning rate at each subsequent step
+        elif Epoch % StepSize == 0:
+            Scheduler.step()
 
         NumIterationsPerEpoch = int(NumTrainSamples/MiniBatchSize/DivTrain)
         EpochHistory = []
@@ -148,15 +169,17 @@ def main():
     """
     # Parse Command Line arguments
     Parser = argparse.ArgumentParser()
+    Parser.add_argument('--ModelArch', default='ResNet', help='Architecture to use: LeNet/ResNet/ResNeXt/DenseNet')
     Parser.add_argument('--DataPath', default='./phase2/CIFAR10/', help='Path to the CIFAR10 dataset, Default: phase2/CIFAR10/')
     Parser.add_argument('--CheckPointPath', default='./phase2/checkpoints/', help='Path to save Checkpoints, Default: phase2/checkpoints/')
     Parser.add_argument('--LogsPath', default='./phase2/logs/', help='Path to save Logs for Tensorboard, Default=phase2/logs/')
     Parser.add_argument('--NumEpochs', type=int, default=5, help='Number of Epochs to Train for, Default:5')
     Parser.add_argument('--DivTrain', type=int, default=1, help='Factor to reduce Train data by per epoch, Default:1')
-    Parser.add_argument('--MiniBatchSize', type=int, default=32, help='Size of the MiniBatch to use, Default:32')
+    Parser.add_argument('--MiniBatchSize', type=int, default=128, help='Size of the MiniBatch to use, Default:32')
     Parser.add_argument('--LoadCheckPoint', type=int, default=0, help='Load Model from latest Checkpoint from CheckPointsPath?, Default:0')
 
     Args = Parser.parse_args()
+    ModelArch = Args.ModelArch
     DataPath = Args.DataPath
     CheckPointPath = Args.CheckPointPath
     LogsPath = Args.LogsPath
@@ -175,7 +198,7 @@ def main():
     
     # Pretty print stats
     PrettyPrint(NumEpochs, DivTrain, MiniBatchSize, NumTrainSamples, LatestFile)
-    TrainOperation(DataPath, DirNames, Labels, 
+    TrainOperation(ModelArch, DataPath, DirNames, Labels, 
                    ImageSize, NumEpochs, MiniBatchSize, DivTrain, 
                    LatestFile, LogsPath, SaveCheckPoint, CheckPointPath)
 

@@ -8,7 +8,7 @@ import torch
 from torchvision import transforms
 from sklearn.metrics import confusion_matrix
 
-from network.Network import CIFAR10Model
+from network.Network import CIFAR10Model, ResNet
 from misc.MiscUtils import *
 from misc.DataUtils import ReadDirNames, ReadLabels
 
@@ -27,12 +27,10 @@ def SetupAll(DataPath):
 
 def GenerateTestDataset(DataPath):
     DirNamesTest, TestLabels = SetupAll(DataPath)
-
     transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-
     TestImages = []
     Labels = []
     for idx in range(len(DirNamesTest)):
@@ -40,11 +38,9 @@ def GenerateTestDataset(DataPath):
         I1 = Image.open(ImgPath + '.png')
         I1 = transform(I1)
         TestLabel = torch.tensor(int(TestLabels[idx]), dtype=torch.long)
-
         # Append all the images and labels
         TestImages.append(I1)
         Labels.append(TestLabel)
-
     return torch.stack(TestImages).to(device), torch.stack(Labels).to(device)
                 
 
@@ -80,7 +76,7 @@ def ConfusionMatrix(DataPath):
 
 def TestOperation(ModelPath, TestImages, TestLabels, PredLabelsPath):
     # Predict output with forward pass, MiniBatchSize for Test is 1
-    model = CIFAR10Model().to(device)
+    model = ResNet().to(device)
 
     if(not (os.path.isfile(ModelPath))):
         print('ERROR: Model does not exist in ' + ModelPath)
@@ -90,15 +86,22 @@ def TestOperation(ModelPath, TestImages, TestLabels, PredLabelsPath):
 
     model.load_state_dict(CheckPoint['model_state_dict'])
     print('Model loaded...\n')
-    print('Number of parameters in this model: {}\n'.format(len(model.state_dict().items())))
-    
+    print('Number of parameter groups in this model: {}'.format(len(model.state_dict().items())))
+    print('Number of parameters: {}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+
+    model.eval()
+
+    # Pass the entire batch through the model for inference
+    with torch.no_grad():
+        predictions = model(TestImages)
+
     PredSaveFile = open(PredLabelsPath, 'w')
     pbar = tqdm(total=len(TestImages))
-    for idx in range(len(TestImages)): 
-        Pred = torch.argmax(model(TestImages[idx])).item()
-        # print("Prediction: ", Pred, " GroundTruth: ", TestLabels[idx].item())
-        PredSaveFile.write(str(Pred)+'\n')
+    for pred in predictions:
+        pred_class = torch.argmax(pred).item()
+        PredSaveFile.write(str(pred_class) + '\n')
         pbar.update()
+
     PredSaveFile.close()
     pbar.close()
 
@@ -119,11 +122,8 @@ def main():
     Args = Parser.parse_args()
     DataPath = Args.DataPath
     ModelPath = Args.ModelPath
-    # LabelsPath = Args.LabelsPath
 
-    # Define PlaceHolder variables for Predicted output
     PredLabelsPath = DataPath + './TxtFiles/LabelsPred.txt' # Path to save predicted labels
-
     TestImages, TestLabels = GenerateTestDataset(DataPath)
     TestOperation(ModelPath, TestImages, TestLabels, PredLabelsPath)
 

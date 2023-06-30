@@ -56,7 +56,7 @@ Use `--help` argument for further explanation on the arguments.
 ### Model Architectures
 To start out, we build a basic CNN inspired from **LeNet-5** by *Yann LeCun*. We then move on to the more recent seminal works in the field, such as **ResNet**, **ResNeXt** and **DenseNet**. Model architectures are shown below.
 
----------------Image(s) here----------------------
+--------------- Image(s) here ----------------------
 
 ### Results
 Following are the **LeNet-5** results:
@@ -69,4 +69,4 @@ Train-Test Accuracies |
 Validation Loss             |  Test set results
 :-------------------------:|:-------------------------:|
 ![](phase2/results/loss_sgd1e-2.png) | ![](phase2/results/test_results_SGD1e-2.png)
-*Orange curve - SGD with 0.1 learning rate, Blue curve - SGD with 0.01 learning rate. Both runs were stopped when their validation loss started to rise.*| *Confusion matrix - $M_{ij}$ denotes the number of samples at $i^{th}$ row - Ground truth values and $j^{th}$ column - predicted values. Model trained for 25 epochs, SGD with 0.01 learning rate.*
+*Orange curve - SGD with 0.1 learning rate, Blue curve - SGD with 0.01 learning rate. Both runs were stopped when their validation loss started to rise.* | *Confusion matrix - $M_{ij}$ denotes the number of samples at $i^{th}$ row - Ground truth values and $j^{th}$ column - predicted values. Model trained for 25 epochs, SGD with 0.01 learning rate.*
