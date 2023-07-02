@@ -9,7 +9,7 @@ import argparse
 import random
 from tqdm import tqdm
 
-from network.Network import CIFAR10Model, ResNet
+from network.Network import CIFAR10Model, ResNet, ResNext
 from misc.MiscUtils import *
 from misc.DataUtils import *
 
@@ -73,9 +73,9 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
     if ModelArch == 'LeNet':
         model = CIFAR10Model().to(device)
     elif ModelArch == 'ResNet':
-        model = ResNet().to(device)
-    elif ModelArch == 'ResNeXt':
-        model = ResNet().to(device)
+        pass
+    elif ModelArch == 'ResNext':
+        model = ResNext(bottleneck_width=4, cardinality=32).to(device)
     elif ModelArch == 'DenseNet':
         model = ResNet().to(device)
 
@@ -84,7 +84,7 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
     NumTrainSamples = len(TrainDirNames)
 
     StepSize = 5
-    Optimizer = SGD(model.parameters(), lr=1e-1, momentum=0.9)
+    Optimizer = SGD(model.parameters(), lr=1e-2, momentum=0.9)
     Scheduler = lr_scheduler.StepLR(Optimizer, step_size=StepSize, gamma=0.2)
 
     # Tensorboard
@@ -169,13 +169,13 @@ def main():
     """
     # Parse Command Line arguments
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--ModelArch', default='ResNet', help='Architecture to use: LeNet/ResNet/ResNeXt/DenseNet')
+    Parser.add_argument('--ModelArch', default='ResNet', help='Architecture to use: LeNet/ResNet/ResNext/DenseNet')
     Parser.add_argument('--DataPath', default='./phase2/CIFAR10/', help='Path to the CIFAR10 dataset, Default: phase2/CIFAR10/')
     Parser.add_argument('--CheckPointPath', default='./phase2/checkpoints/', help='Path to save Checkpoints, Default: phase2/checkpoints/')
     Parser.add_argument('--LogsPath', default='./phase2/logs/', help='Path to save Logs for Tensorboard, Default=phase2/logs/')
     Parser.add_argument('--NumEpochs', type=int, default=5, help='Number of Epochs to Train for, Default:5')
     Parser.add_argument('--DivTrain', type=int, default=1, help='Factor to reduce Train data by per epoch, Default:1')
-    Parser.add_argument('--MiniBatchSize', type=int, default=128, help='Size of the MiniBatch to use, Default:32')
+    Parser.add_argument('--MiniBatchSize', type=int, default=32, help='Size of the MiniBatch to use, Default:32')
     Parser.add_argument('--LoadCheckPoint', type=int, default=0, help='Load Model from latest Checkpoint from CheckPointsPath?, Default:0')
 
     Args = Parser.parse_args()

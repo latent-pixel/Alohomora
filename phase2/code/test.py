@@ -8,7 +8,7 @@ import torch
 from torchvision import transforms
 from sklearn.metrics import confusion_matrix
 
-from network.Network import CIFAR10Model, ResNet
+from network.Network import CIFAR10Model, ResNet, ResNext
 from misc.MiscUtils import *
 from misc.DataUtils import ReadDirNames, ReadLabels
 
@@ -74,9 +74,17 @@ def ConfusionMatrix(DataPath):
     print('\nAccuracy: '+ str(Accuracy(LabelsPred, LabelsTrue)), '%')
 
 
-def TestOperation(ModelPath, TestImages, TestLabels, PredLabelsPath):
+def TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath):
     # Predict output with forward pass, MiniBatchSize for Test is 1
     model = ResNet().to(device)
+    if ModelArch == 'LeNet':
+        model = CIFAR10Model().to(device)
+    elif ModelArch == 'ResNet':
+        pass
+    elif ModelArch == 'ResNext':
+        model = ResNext(bottleneck_width=4, cardinality=32).to(device)
+    elif ModelArch == 'DenseNet':
+        model = ResNet().to(device)
 
     if(not (os.path.isfile(ModelPath))):
         print('ERROR: Model does not exist in ' + ModelPath)
@@ -116,16 +124,18 @@ def main():
 
     # Parse Command Line arguments
     Parser = argparse.ArgumentParser()
+    Parser.add_argument('--ModelArch', default='ResNet', help='Architecture to use: LeNet/ResNet/ResNext/DenseNet')
     Parser.add_argument('--DataPath', default='./phase2/CIFAR10/', help='Path to the CIFAR10 dataset, Default: phase2/CIFAR10/')
     Parser.add_argument('--ModelPath', default='./phase2/checkpoints/ep25_model.ckpt', help='Path to load latest model from, Default:phase2/checkpoints/ep25_model.ckpt')
 
     Args = Parser.parse_args()
+    ModelArch = Args.ModelArch
     DataPath = Args.DataPath
     ModelPath = Args.ModelPath
 
     PredLabelsPath = DataPath + './TxtFiles/LabelsPred.txt' # Path to save predicted labels
     TestImages, TestLabels = GenerateTestDataset(DataPath)
-    TestOperation(ModelPath, TestImages, TestLabels, PredLabelsPath)
+    TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath)
 
     # Plot Confusion Matrix
     ConfusionMatrix(DataPath)

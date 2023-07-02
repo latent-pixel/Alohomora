@@ -42,7 +42,7 @@ class ImageClassificationBase(nn.Module):
         return {'train_acc': train_epoch_acc.item(), 'val_acc': val_epoch_acc.item(), 'val_loss': val_epoch_loss.item()}
     
     def fetch_epoch_results(self, result):
-        print("TrainAcc: {:.4f}, ValAcc: {:.4f}, ValLoss: {:.4f}\n".format(result['train_acc'], result['val_acc'], result['val_loss']))
+        print("TrainAcc: {:.4f}, ValAcc: {:.4f}, ValLoss: {:.4f}".format(result['train_acc'], result['val_acc'], result['val_loss']))
 
 
 class CIFAR10Model(ImageClassificationBase):
@@ -80,6 +80,10 @@ class CIFAR10Model(ImageClassificationBase):
         return x
 
 
+######################################################################################
+# ResNet20 implementation from "Deep Residual Learning for Image Recognition" #
+# https://arxiv.org/pdf/1512.03385.pdf #
+######################################################################################
 class ResNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1) -> None:
         super().__init__()
@@ -88,7 +92,8 @@ class ResNetBlock(nn.Module):
                                    nn.ReLU())
         self.conv2 = nn.Sequential(nn.Conv2d(out_channels, out_channels, 3, stride=1, padding=1),
                                    nn.BatchNorm2d(out_channels))
-        if stride > 1 or in_channels != out_channels:
+        # Using option (B) from the paper for shortcut connections: projection along with identity mapping
+        if (stride != 1) or (in_channels != out_channels):
             self.shortcut = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride),
                                           nn.BatchNorm2d(out_channels))
         else:
@@ -129,3 +134,66 @@ class ResNet(ImageClassificationBase):
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
+
+
+################################################################################################
+# ResNeXt29 implementation from "Aggregated Residual Transformations for Deep Neural Networks" #
+# https://arxiv.org/pdf/1611.05431.pdf #
+################################################################################################
+class ResNextBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, d=64, C=1, stride=1) -> None:
+        super().__init__()
+        group_width = d*C
+        self.conv1 = nn.Sequential(nn.Conv2d(in_channels, group_width, kernel_size=1, stride=1),
+                                   nn.BatchNorm2d(group_width),
+                                   nn.ReLU())
+        self.conv2 = nn.Sequential(nn.Conv2d(group_width, group_width, 3, stride=stride, padding=1, groups=C),
+                                   nn.BatchNorm2d(group_width),
+                                   nn.ReLU())
+        self.conv3 = nn.Sequential(nn.Conv2d(group_width, out_channels, 1, stride=1),
+                                   nn.BatchNorm2d(out_channels),
+                                   )
+        # Using option (B) from the paper for shortcut connections: projection along with identity mapping
+        if (stride != 1) or (in_channels != out_channels):
+            self.shortcut = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride),
+                                          nn.BatchNorm2d(out_channels))
+        else:
+            self.shortcut = nn.Identity()
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.conv3(out)
+        out += self.shortcut(residual)
+        return F.relu(out)
+    
+
+class ResNext(ImageClassificationBase):
+    def __init__(self, bottleneck_width=64, cardinality=1) -> None:
+        super().__init__()
+        self.conv0 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=3, padding=1),
+                                    nn.BatchNorm2d(64),
+                                    nn.ReLU())
+        self.stage1 = nn.Sequential(ResNextBlock(64, 256, d=bottleneck_width, C=cardinality, stride=1),
+                                  ResNextBlock(256, 256, d=bottleneck_width, C=cardinality),
+                                  ResNextBlock(256, 256, d=bottleneck_width, C=cardinality))
+        self.stage2 = nn.Sequential(ResNextBlock(256, 512, d=2*bottleneck_width, C=cardinality, stride=2),
+                                  ResNextBlock(512, 512, d=2*bottleneck_width, C=cardinality),
+                                  ResNextBlock(512, 512, d=2*bottleneck_width, C=cardinality))
+        self.stage3 = nn.Sequential(ResNextBlock(512, 1024, d=4*bottleneck_width, C=cardinality, stride=2),
+                                  ResNextBlock(1024, 1024, d=4*bottleneck_width, C=cardinality),
+                                  ResNextBlock(1024, 1024, d=4*bottleneck_width, C=cardinality))
+        self.glob_avg_pool = nn.AvgPool2d(kernel_size=8, stride=1)
+        self.fc = nn.Linear(1024, 10)
+
+    def forward(self, x):
+        out = self.conv0(x)
+        out = self.stage1(out)
+        out = self.stage2(out)
+        out = self.stage3(out)
+        out = self.glob_avg_pool(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        return out
+    
