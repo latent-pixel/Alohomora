@@ -8,7 +8,7 @@ import torch
 from torchvision import transforms
 from sklearn.metrics import confusion_matrix
 
-from network.Network import CIFAR10Model, ResNet, ResNext
+from network.Network import CIFAR10Model, ResNet, ResNext, DenseNet
 from misc.MiscUtils import *
 from misc.DataUtils import ReadDirNames, ReadLabels
 
@@ -31,17 +31,16 @@ def GenerateTestDataset(DataPath):
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-    TestImages = []
-    Labels = []
     for idx in range(len(DirNamesTest)):
         ImgPath = DataPath + DirNamesTest[idx]
         I1 = Image.open(ImgPath + '.png')
         I1 = transform(I1)
         TestLabel = torch.tensor(int(TestLabels[idx]), dtype=torch.long)
-        # Append all the images and labels
-        TestImages.append(I1)
-        Labels.append(TestLabel)
-    return torch.stack(TestImages).to(device), torch.stack(Labels).to(device)
+        yield I1, TestLabel
+        # Append all the images and labels (this is avoided due to memory issues)
+    #     TestImages.append(I1)
+    #     Labels.append(TestLabel)
+    # return torch.stack(TestImages).to(device), torch.stack(Labels).to(device)
                 
 
 def Accuracy(Pred, GT):
@@ -74,17 +73,22 @@ def ConfusionMatrix(DataPath):
     print('\nAccuracy: '+ str(Accuracy(LabelsPred, LabelsTrue)), '%')
 
 
-def TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath):
+def TestOperation(ModelArch, DataPath, ModelPath, PredLabelsPath):
     # Predict output with forward pass, MiniBatchSize for Test is 1
+    # Initialize the model
     model = ResNet().to(device)
     if ModelArch == 'LeNet':
         model = CIFAR10Model().to(device)
+        print("Loaded model: LeNet")
     elif ModelArch == 'ResNet':
+        print("Loaded model: ResNet")
         pass
     elif ModelArch == 'ResNext':
         model = ResNext(bottleneck_width=4, cardinality=32).to(device)
+        print("Loaded model: ResNext")
     elif ModelArch == 'DenseNet':
-        model = ResNet().to(device)
+        model = DenseNet().to(device)
+        print("Loaded model: DenseNet")
 
     if(not(os.path.isfile(ModelPath))):
         print('ERROR: Model does not exist in ' + ModelPath)
@@ -96,15 +100,18 @@ def TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath):
     print('Model loaded...\n')
     print('Number of parameter groups in this model: {}'.format(len(model.state_dict().items())))
     print('Number of parameters: {}'.format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
-
     model.eval()
-
-    # Pass the entire batch through the model for inference
+    
+    TestSet = GenerateTestDataset(DataPath)
+    predictions = []
+    # One sample at a time through the model for inference (takes longer, but saves compute)
     with torch.no_grad():
-        predictions = model(TestImages)
+        for TestImage, TestLabel in TestSet:   
+            pred = model(TestImage.unsqueeze(0).to(device))
+            predictions.append(pred)
 
     PredSaveFile = open(PredLabelsPath, 'w')
-    pbar = tqdm(total=len(TestImages))
+    pbar = tqdm(total=len(predictions))
     for pred in predictions:
         pred_class = torch.argmax(pred).item()
         PredSaveFile.write(str(pred_class) + '\n')
@@ -134,8 +141,7 @@ def main():
     ModelPath = Args.ModelPath
 
     PredLabelsPath = DataPath + './TxtFiles/LabelsPred.txt' # Path to save predicted labels
-    TestImages, TestLabels = GenerateTestDataset(DataPath)
-    TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath)
+    TestOperation(ModelArch, DataPath, ModelPath, PredLabelsPath)
 
     # Plot Confusion Matrix
     ConfusionMatrix(DataPath)

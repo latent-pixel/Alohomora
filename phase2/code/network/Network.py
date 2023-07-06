@@ -82,7 +82,7 @@ class CIFAR10Model(ImageClassificationBase):
 
 ######################################################################################
 # ResNet20 implementation from "Deep Residual Learning for Image Recognition" #
-# https://arxiv.org/pdf/1512.03385.pdf #
+# https://arxiv.org/abs/1512.03385 #
 ######################################################################################
 class ResNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1) -> None:
@@ -138,7 +138,7 @@ class ResNet(ImageClassificationBase):
 
 ################################################################################################
 # ResNeXt29 implementation from "Aggregated Residual Transformations for Deep Neural Networks" #
-# https://arxiv.org/pdf/1611.05431.pdf #
+# https://arxiv.org/abs/1611.05431 #
 ################################################################################################
 class ResNextBlock(nn.Module):
     def __init__(self, in_channels, out_channels, d=64, C=1, stride=1) -> None:
@@ -198,6 +198,10 @@ class ResNext(ImageClassificationBase):
         return out
 
 
+######################################################################################
+# DenseNet40 implementation from "Densely Connected Convolutional Networks" #
+# https://arxiv.org/abs/1608.06993 #
+######################################################################################
 class BasicBlock(nn.Module):
     # k is the growth rate parameter
     def __init__(self, in_channels, k=12) -> None:
@@ -254,9 +258,3 @@ class DenseNet(ImageClassificationBase):
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
-
-
-# test_input = torch.randn(1, 3, 32, 32)
-# model = DenseNet()
-# pred = model(test_input)
-# print(pred)

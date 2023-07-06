@@ -33,8 +33,6 @@ def GenerateBatch(DataPath, DirNamesTrain, TrainLabels, ImageSize, MiniBatchSize
         transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(p=0.5),
-            # transforms.RandomRotation(degrees=15),
-            # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
@@ -82,14 +80,13 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
     elif ModelArch == 'DenseNet':
         model = DenseNet().to(device)
         print("Loaded model: DenseNet")
-    
-    print(model)
 
     # Splitting training data into training and validation datasets 
     TrainDirNames, ValDirNames, TrainLabels, ValLabels = TrainValSplit(DirNames, Labels)
     NumTrainSamples = len(TrainDirNames)
-
     StepSize = 5
+    if NumEpochs >= 100:
+        StepSize = 10
     Optimizer = SGD(model.parameters(), lr=1e-1, momentum=0.9)
     Scheduler = lr_scheduler.StepLR(Optimizer, step_size=StepSize, gamma=0.5)
 
@@ -113,7 +110,7 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
         print("Learning rate: ", Optimizer.param_groups[0]['lr'])
 
         BatchSizeMultiplier = 1
-        # First step (epochs 1-5): increase batch size by a factor of 2
+        # First step (epochs 1-<StepSize>): increase batch size by a factor of 2
         if Epoch < StepSize:
             BatchSizeMultiplier = 2
         print("Mini-batch size: {}".format(BatchSizeMultiplier*MiniBatchSize))
@@ -173,7 +170,7 @@ def main():
     Parser.add_argument('--DataPath', default='./phase2/CIFAR10/', help='Path to the CIFAR10 dataset, Default: phase2/CIFAR10/')
     Parser.add_argument('--CheckPointPath', default='./phase2/checkpoints/', help='Path to save Checkpoints, Default: phase2/checkpoints/')
     Parser.add_argument('--LogsPath', default='./phase2/logs/', help='Path to save Logs for Tensorboard, Default=phase2/logs/')
-    Parser.add_argument('--NumEpochs', type=int, default=5, help='Number of Epochs to Train for, Default:5')
+    Parser.add_argument('--NumEpochs', type=int, default=100, help='Number of Epochs to Train for, Default:100')
     Parser.add_argument('--DivTrain', type=int, default=1, help='Factor to reduce Train data by per epoch, Default:1')
     Parser.add_argument('--MiniBatchSize', type=int, default=32, help='Size of the MiniBatch to use, Default:32')
     Parser.add_argument('--LoadCheckPoint', type=int, default=0, help='Load Model from latest Checkpoint from CheckPointsPath?, Default:0')
