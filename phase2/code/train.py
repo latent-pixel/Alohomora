@@ -9,7 +9,7 @@ import argparse
 import random
 from tqdm import tqdm
 
-from network.Network import CIFAR10Model, ResNet, ResNext
+from network.Network import CIFAR10Model, ResNet, ResNext, DenseNet
 from misc.MiscUtils import *
 from misc.DataUtils import *
 
@@ -72,20 +72,26 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
     model = ResNet().to(device)
     if ModelArch == 'LeNet':
         model = CIFAR10Model().to(device)
+        print("Loaded model: LeNet")
     elif ModelArch == 'ResNet':
+        print("Loaded model: ResNet")
         pass
     elif ModelArch == 'ResNext':
         model = ResNext(bottleneck_width=4, cardinality=32).to(device)
+        print("Loaded model: ResNext")
     elif ModelArch == 'DenseNet':
-        model = ResNet().to(device)
+        model = DenseNet().to(device)
+        print("Loaded model: DenseNet")
+    
+    print(model)
 
     # Splitting training data into training and validation datasets 
     TrainDirNames, ValDirNames, TrainLabels, ValLabels = TrainValSplit(DirNames, Labels)
     NumTrainSamples = len(TrainDirNames)
 
     StepSize = 5
-    Optimizer = SGD(model.parameters(), lr=1e-2, momentum=0.9)
-    Scheduler = lr_scheduler.StepLR(Optimizer, step_size=StepSize, gamma=0.2)
+    Optimizer = SGD(model.parameters(), lr=1e-1, momentum=0.9)
+    Scheduler = lr_scheduler.StepLR(Optimizer, step_size=StepSize, gamma=0.5)
 
     # Tensorboard
     # Create a summary to monitor loss tensor
@@ -104,21 +110,20 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
     start_timer = tic()
     for Epoch in range(StartEpoch, NumEpochs):
         print("Epoch [{}]".format(Epoch+1))
+        print("Learning rate: ", Optimizer.param_groups[0]['lr'])
 
-        # First step: increase batch size by a factor of 5
-        if Epoch == 0:
-            MiniBatchSize *= 5
-        # Decay learning rate at each subsequent step
-        elif Epoch % StepSize == 0:
-            Scheduler.step()
+        BatchSizeMultiplier = 1
+        # First step (epochs 1-5): increase batch size by a factor of 2
+        if Epoch < StepSize:
+            BatchSizeMultiplier = 2
+        print("Mini-batch size: {}".format(BatchSizeMultiplier*MiniBatchSize))
 
-        NumIterationsPerEpoch = int(NumTrainSamples/MiniBatchSize/DivTrain)
+        NumIterationsPerEpoch = int(NumTrainSamples/(BatchSizeMultiplier*MiniBatchSize)/DivTrain)
         EpochHistory = []
-
         pbar_inner = tqdm(total=NumIterationsPerEpoch)
         for Iter in range(NumIterationsPerEpoch):
-            TrainBatch = GenerateBatch(DataPath, TrainDirNames, TrainLabels, ImageSize, MiniBatchSize)
-            ValidationBatch = GenerateBatch(DataPath, ValDirNames, ValLabels, ImageSize, 2*MiniBatchSize)
+            TrainBatch = GenerateBatch(DataPath, TrainDirNames, TrainLabels, ImageSize, BatchSizeMultiplier*MiniBatchSize)
+            ValidationBatch = GenerateBatch(DataPath, ValDirNames, ValLabels, ImageSize, BatchSizeMultiplier*MiniBatchSize)
 
             Optimizer.zero_grad()
 
@@ -127,13 +132,6 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
 
             BatchLoss.backward()
             Optimizer.step()
-            
-            # # Save checkpoint every some SaveCheckPoint's iterations
-            # if Iter % SaveCheckPoint == 0:
-            #     # Save the Model learnt in this epoch
-            #     SaveName =  CheckPointPath + str(Epoch) + 'a' + str(Iter) + 'model.ckpt'
-            #     torch.save({'epoch': Epoch,'model_state_dict': model.state_dict(),'optimizer_state_dict': Optimizer.state_dict(),'loss': LossThisBatch}, SaveName)
-            #     # print('\n' + SaveName + ' Model Saved...')
 
             result = model.validation_step(ValidationBatch)
             result.update({'train_acc': BatchAcc})
@@ -155,6 +153,8 @@ def TrainOperation(ModelArch, DataPath, DirNames, Labels,
         SaveName = CheckPointPath + 'ep' + str(Epoch+1) + '_model.ckpt'
         torch.save({'epoch': Epoch,'model_state_dict': model.state_dict(),'optimizer_state_dict': Optimizer.state_dict(),'loss': BatchLoss}, SaveName)
         print('Model saved at ' + SaveName + '\n')
+        
+        Scheduler.step() # Decay learning rate at each subsequent "step"
 
     training_time = toc(start_timer)
     print("The total time taken to train the model: {} seconds".format(round(training_time, 2)))

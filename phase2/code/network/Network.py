@@ -196,4 +196,67 @@ class ResNext(ImageClassificationBase):
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
+
+
+class BasicBlock(nn.Module):
+    # k is the growth rate parameter
+    def __init__(self, in_channels, k=12) -> None:
+        super().__init__()
+        self.conv = nn.Sequential(nn.BatchNorm2d(in_channels),
+                                  nn.ReLU(),
+                                  nn.Conv2d(in_channels, k, kernel_size=3, padding=1))
     
+    def forward(self, x):
+        out = self.conv(x)
+        out = torch.cat((x, out), dim=1)
+        return out
+
+
+class DenseNet(ImageClassificationBase):
+    def __init__(self, k=12, block_sizes=[6, 6, 6]) -> None:
+        super().__init__()
+        self.k = k
+        self.in_channels = 16
+        self.conv0 = nn.Conv2d(3, self.in_channels, kernel_size=3, padding=1)
+        self.dense_block1 = self._make_dense_block(block_sizes[0])
+        self.trans_block1 = self._make_trans_block(self.in_channels)
+        self.dense_block2 = self._make_dense_block(block_sizes[1])
+        self.trans_block2 = self._make_trans_block(self.in_channels)
+        self.dense_block3 = self._make_dense_block(block_sizes[2])
+        
+        self.glob_pool = nn.Sequential(nn.BatchNorm2d(self.in_channels),
+                                       nn.ReLU(),
+                                       nn.AdaptiveAvgPool2d(1))
+        self.fc = nn.Linear(self.in_channels, 10)
+
+    def _make_dense_block(self, block_size):
+        block_list = []
+        for i in range(block_size):
+            block_list.append(BasicBlock(self.in_channels, self.k))
+            self.in_channels += self.k
+        block_list = nn.Sequential(*block_list)
+        return block_list
+    
+    def _make_trans_block(self, in_channels):
+        block = nn.Sequential(nn.BatchNorm2d(in_channels),
+                            nn.ReLU(),
+                            nn.Conv2d(in_channels, in_channels // 2, kernel_size=1),
+                            nn.AvgPool2d(kernel_size=2, stride=2))
+        self.in_channels = in_channels // 2
+        return block
+    
+    def forward(self, x):
+        out = self.conv0(x)
+        out = self.trans_block1(self.dense_block1(out))
+        out = self.trans_block2(self.dense_block2(out))
+        out = self.dense_block3(out)
+        out = self.glob_pool(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc(out)
+        return out
+
+
+# test_input = torch.randn(1, 3, 32, 32)
+# model = DenseNet()
+# pred = model(test_input)
+# print(pred)

@@ -86,7 +86,7 @@ def TestOperation(ModelArch, ModelPath, TestImages, TestLabels, PredLabelsPath):
     elif ModelArch == 'DenseNet':
         model = ResNet().to(device)
 
-    if(not (os.path.isfile(ModelPath))):
+    if(not(os.path.isfile(ModelPath))):
         print('ERROR: Model does not exist in ' + ModelPath)
         sys.exit()
     else:
@@ -143,4 +143,3 @@ def main():
 
 if __name__ == '__main__':
     main()
- 
